@@ -1,4 +1,5 @@
 <?php
+// app/Http/Controllers/Api/BakongPaymentController.php
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -10,51 +11,71 @@ class BakongPaymentController extends Controller
 {
     public function status(Order $order, BakongService $bakong)
     {
+        $order->refresh();
+
+        // already paid
+        if ($order->payment_status === 'paid') {
+            return response()->json([
+                'paid' => true,
+                'payment_status' => 'paid',
+                'paid_at' => $order->paid_at,
+                'status' => $order->status,
+                'bakong' => null,
+            ]);
+        }
+
         if (!$order->khqr_md5) {
             return response()->json([
                 'paid' => false,
-                'message' => 'Order has no khqr_md5 yet. Call /bakong/khqr first.',
-            ], 400);
+                'payment_status' => $order->payment_status ?? 'pending',
+                'paid_at' => $order->paid_at,
+                'status' => $order->status ?? 'pending',
+                'bakong' => ['responseCode' => 1, 'responseMessage' => 'Missing md5'],
+            ]);
         }
 
-        // If already paid
-        if ($order->payment_status === 'paid') {
-            return response()->json(['paid' => true, 'order' => $order]);
-        }
+        $bakongResp = $bakong->checkByMd5($order->khqr_md5);
 
-       $check = $bakong->checkKhqr(['md5' => $order->khqr_md5]);
-
-
-        // You must adapt "isPaid" based on real response structure.
-        // For now, we detect paid if response contains "paid" or "success" flags.
-        $data = $check['data'] ?? [];
-        $isPaid = false;
-
-        if (is_array($data)) {
-            $isPaid =
-                ($data['paid'] ?? false) === true
-                || ($data['status'] ?? null) === 'SUCCESS'
-                || ($data['responseCode'] ?? null) === 0;
-        }
+        $isPaid = $bakong->isPaidFromCheck(
+            bakongResp: $bakongResp,
+            expectedAmount: (float) $order->total,
+            expectedToAccountId: (string) config('services.bakong.account_id')
+        );
 
         if ($isPaid) {
+            $now = now();
+
             $order->update([
                 'payment_status' => 'paid',
-                'paid_at' => now(),
+                'paid_at' => $now,
+                'status' => 'paid',
             ]);
 
-            // Update latest payment row too
-            OrderPayment::where('order_id', $order->id)
-                ->where('provider', 'bakong')
-                ->latest('id')
-                ->first()?->update([
+            // update latest payment record
+            $payment = OrderPayment::where('order_id', $order->id)->latest()->first();
+            if ($payment) {
+                $payment->update([
                     'status' => 'paid',
-                    'raw' => $data,
+                    'bakong_trx_id' => $bakongResp['data']['externalRef'] ?? null,
+                    'raw' => $bakongResp,
                 ]);
+            }
 
-            return response()->json(['paid' => true, 'order' => $order, 'bakong' => $data]);
+            return response()->json([
+                'paid' => true,
+                'payment_status' => 'paid',
+                'paid_at' => $order->paid_at,
+                'status' => $order->status,
+                'bakong' => $bakongResp,
+            ]);
         }
 
-        return response()->json(['paid' => false, 'bakong' => $data, 'raw' => $check['raw']]);
+        return response()->json([
+            'paid' => false,
+            'payment_status' => $order->payment_status ?? 'pending',
+            'paid_at' => $order->paid_at,
+            'status' => $order->status ?? 'pending',
+            'bakong' => $bakongResp,
+        ]);
     }
 }

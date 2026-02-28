@@ -35,31 +35,23 @@ return [
         ],
     ],
 
-  // config/services.php
+
+    // config/services.php
 
 'bakong' => [
     'token' => env('BAKONG_TOKEN'),
-    'base_url' => env('BAKONG_BASE_URL', 'https://api-bakong.nbc.gov.kh'),
-
-    // You MUST be able to change this if Bakong path differs
-    'generate_path' => env('BAKONG_GENERATE_PATH', '/api/v1/khqr/generate'),
-    'check_path' => env('BAKONG_CHECK_PATH', '/api/v1/khqr/check'),
-
-    // Some Bakong endpoints may be GET (your nginx 405 indicates mismatch)
-    'generate_method' => env('BAKONG_GENERATE_METHOD', 'POST'), // POST|GET
-    'check_method' => env('BAKONG_CHECK_METHOD', 'POST'),       // POST|GET
-
-    'merchant_name' => env('BAKONG_MERCHANT_NAME', 'Bo Coffee'),
-    'merchant_city' => env('BAKONG_MERCHANT_CITY', 'Phnom Penh'),
     'account_id' => env('BAKONG_ACCOUNT_ID'),
-    'mcc' => env('BAKONG_MCC', '5999'),
-    'country' => env('BAKONG_COUNTRY', 'KH'),
-    'currency' => (int) env('BAKONG_CURRENCY', 840), // USD=840
-    'qr_expire_seconds' => (int) env('BAKONG_QR_EXPIRE_SECONDS', 600),
+    'merchant_name' => env('BAKONG_MERCHANT_NAME', 'Khmer cafe'),
+    'merchant_city' => env('BAKONG_MERCHANT_CITY', 'Phnom Penh'),
 
-    // Debug
+    // USD = 840, KHR = 116
+    'currency' => (int) env('BAKONG_CURRENCY', 840),
+
+    'qr_expire_seconds' => (int) env('BAKONG_QR_EXPIRE_SECONDS', 300),
     'debug' => (bool) env('BAKONG_DEBUG', false),
 ],
+
+
 
 
 

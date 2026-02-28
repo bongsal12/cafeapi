@@ -35,8 +35,5 @@ Route::prefix('orders')->group(function () {
     Route::patch('/{order}/status', [OrderController::class, 'updateStatus']);
 });
 Route::post('/orders/{order}/bakong/intent', [BakongPaymentController::class, 'intent']);
-Route::get('/orders/{order}/bakong/status', [BakongPaymentController::class, 'status']);
-
-
 Route::post('/orders/{order}/bakong/khqr', [OrderPaymentController::class, 'khqr']);
-
+Route::get('/orders/{order}/bakong/status', [BakongPaymentController::class, 'status']);
