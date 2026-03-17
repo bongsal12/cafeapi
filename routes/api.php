@@ -19,6 +19,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\BakongPaymentController;
+use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\OrderPaymentController;
 
 Route::apiResource('categories', CategoryController::class);
@@ -37,3 +38,8 @@ Route::prefix('orders')->group(function () {
 Route::post('/orders/{order}/bakong/intent', [BakongPaymentController::class, 'intent']);
 Route::post('/orders/{order}/bakong/khqr', [OrderPaymentController::class, 'khqr']);
 Route::get('/orders/{order}/bakong/status', [BakongPaymentController::class, 'status']);
+
+
+Route::get('/reports', [ReportsController::class, 'index']);
+// If you want admin only, use middleware:
+// Route::middleware('auth:sanctum')->get('/reports', [ReportsController::class, 'index']);

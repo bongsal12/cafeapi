@@ -55,12 +55,12 @@ class BakongService
         // Build IndividualInfo (supports optional fields too)
         $info = new IndividualInfo(
             bakongAccountID: $this->merchantAccountId(),
-            merchantName: (string) config('services.bakong.merchant_name', 'Bo Coffee'),
+            merchantName: (string) config('services.bakong.merchant_name', 'STARCAFE'),
             merchantCity: (string) config('services.bakong.merchant_city', 'Phnom Penh'),
             currency: $currency,
             amount: $amount,
             billNumber: $merchantRef,                 // show reference in decode
-            storeLabel: 'Bo Coffee',
+            storeLabel: 'STARCAFE',
             terminalLabel: $tableNo ? ('T' . $tableNo) : null,
         );
 

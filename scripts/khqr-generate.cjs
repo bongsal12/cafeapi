@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Usage:
- * node scripts/khqr-generate.cjs --amount=0.10 --ref=ORD-xxx --account=nhun_pisal@bkrt --name="Bo Coffee" --city="Phnom Penh" --currency=840
+ * node scripts/khqr-generate.cjs --amount=0.10 --ref=ORD-xxx --account=nhun_pisal@bkrt --name="STARCAFE" --city="Phnom Penh" --currency=840
  */
 const { BakongKHQR, IndividualInfo, khqrData } = require("bakong-khqr");
 
@@ -15,7 +15,7 @@ try {
   const amount = Number(arg("amount", "0"));
   const ref = String(arg("ref", ""));
   const account = String(arg("account", ""));
-  const name = String(arg("name", "Bo Coffee"));
+  const name = String(arg("name", "STARCAFE"));
   const city = String(arg("city", "Phnom Penh"));
   const currencyArg = arg("currency", "840"); // USD=840
   const currency = Number(currencyArg);
@@ -32,7 +32,7 @@ try {
     amount,
     billNumber: ref,
     storeLabel: name,
-    terminalLabel: "Bo Coffee",
+    terminalLabel: "STARCAFE",
   };
 
   // IMPORTANT FIX: must instantiate BakongKHQR and call instance method. :contentReference[oaicite:2]{index=2}
