@@ -14,7 +14,7 @@ class ReportsController extends Controller
     {
         $end = now()->endOfDay();
 
-        // ✅ Custom range: from=YYYY-MM-DD&to=YYYY-MM-DD
+
         $from = $request->query('from');
         $to   = $request->query('to');
 

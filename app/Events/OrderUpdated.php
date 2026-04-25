@@ -26,6 +26,8 @@ class OrderUpdated implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
-        return ['order' => $this->order->toArray()];
+        return [
+            'order' => $this->order->toArray(),
+        ];
     }
 }

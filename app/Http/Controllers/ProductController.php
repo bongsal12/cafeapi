@@ -11,12 +11,39 @@ use Illuminate\Support\Collection;
 
 class ProductController extends Controller
 {
-    public function index()
-    {
-        return Product::with(['category','productType','variants'])
-            ->latest()
-            ->paginate(20);
+    // public function index()
+    // {
+    //     return Product::with(['category','productType','variants'])
+    //         ->latest()
+    //         ->paginate(20);
+    // }
+    public function index(Request $request)
+{
+    $q = Product::query()
+        ->with(['variants', 'category', 'productType']);
+
+    // ✅ filter by category
+    if ($request->filled('category_id')) {
+        $q->where('category_id', (int) $request->category_id);
     }
+
+    // ✅ filter by product type
+    if ($request->filled('product_type_id')) {
+        $q->where('product_type_id', (int) $request->product_type_id);
+    }
+
+    // ✅ search by name/slug
+    if ($request->filled('search')) {
+        $s = trim((string) $request->search);
+        $q->where(function ($qq) use ($s) {
+            $qq->where('name', 'ILIKE', "%{$s}%")
+               ->orWhere('slug', 'ILIKE', "%{$s}%");
+        });
+    }
+
+    // pagination (keep your existing style)
+    return $q->orderByDesc('id')->paginate(20);
+}
 
     public function store(Request $request)
     {
@@ -102,7 +129,7 @@ class ProductController extends Controller
             $product->variants()->createMany($data['variants']);
         }
 
-        return $product->fresh(); 
+        return $product->fresh();
     });
 
     return response()->json(
