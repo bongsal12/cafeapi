@@ -14,6 +14,11 @@ class Product extends Model
         'name',
         'slug',
         'image',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public function category(): BelongsTo

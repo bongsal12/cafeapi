@@ -28,15 +28,38 @@ class OrderController extends Controller
             'items.*.qty' => ['required', 'integer', 'min:1'],
             'items.*.price' => ['required', 'numeric', 'min:0'],
             'status' => ['sometimes', 'string'],
+            'payment_method' => ['sometimes', 'in:cash,bakong'],
+            'currency' => ['sometimes', 'string', 'size:3'],
         ]);
 
         $total = collect($data['items'])->sum(fn ($i) => $i['qty'] * $i['price']);
 
+        $paymentMethod = $data['payment_method'] ?? null;
+        $isCash = $paymentMethod === 'cash';
+        $isBakong = $paymentMethod === 'bakong';
+
+        $paymentStatus = 'unpaid';
+        if ($isCash) {
+            $paymentStatus = 'paid';
+        } elseif ($isBakong) {
+            $paymentStatus = 'pending';
+        }
+
+        $orderStatus = $data['status'] ?? 'pending';
+        if ($isCash) {
+            $orderStatus = 'paid';
+        }
+
         $order = Order::create([
             'reference' => 'ORD-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4)),
-            'status' => $data['status'] ?? 'pending',
+            'status' => $orderStatus,
             'total' => $total,
             'items' => $data['items'],
+            'payment_method' => $paymentMethod,
+            'payment_status' => $paymentStatus,
+            'payment_provider' => $isCash ? 'cash' : ($isBakong ? 'bakong' : null),
+            'currency' => strtoupper($data['currency'] ?? 'USD'),
+            'paid_at' => $isCash ? now() : null,
         ]);
 
         broadcast(new OrderCreated($order));

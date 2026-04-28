@@ -41,6 +41,10 @@ class ProductController extends Controller
         });
     }
 
+    if ($request->has('is_active')) {
+        $q->where('is_active', filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN));
+    }
+
     // pagination (keep your existing style)
     return $q->orderByDesc('id')->paginate(20);
 }
@@ -53,6 +57,7 @@ class ProductController extends Controller
             'name'            => ['required','string','max:120'],
             'slug'            => ['nullable','string','max:120','unique:products,slug'],
             'image'           => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+            'is_active'       => ['sometimes', 'boolean'],
 
 
             'variants'              => ['required','array','min:1'],
@@ -71,6 +76,7 @@ class ProductController extends Controller
     unset($data['variants']);
 
     $data['slug'] = $data['slug'] ?? Str::slug($data['name'], '_');
+    $data['is_active'] = $data['is_active'] ?? true;
 
     $product = DB::transaction(function () use ($data, $variants) {
         $product = Product::create($data);
@@ -98,6 +104,7 @@ class ProductController extends Controller
 
         // Allow file upload OR string (URL/path). 'sometimes' means only validate if present.
         'image'           => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpeg,png,jpg,gif,svg,webp', 'max:2048'],
+        'is_active'       => ['sometimes', 'boolean'],
 
         'variants'              => ['sometimes', 'array', 'min:1'],
         'variants.*.size'       => ['required_with:variants', 'string', 'max:50'],

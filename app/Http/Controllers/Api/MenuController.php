@@ -9,7 +9,11 @@ class MenuController extends Controller
 {
     public function index()
     {
-        $categories = Category::with(['products.productType', 'products.variants'])->get();
+        $categories = Category::with([
+            'products' => function ($q) {
+                $q->where('is_active', true)->with(['productType', 'variants']);
+            }
+        ])->get();
 
         $menu = [];
 
