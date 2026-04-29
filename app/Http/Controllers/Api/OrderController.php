@@ -14,7 +14,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        return Order::latest()->take(50)->get();
+        return Order::latest()->get();
     }
 
     public function store(Request $request)
@@ -27,6 +27,7 @@ class OrderController extends Controller
             'items.*.sugar' => ['required', 'string', 'max:30'],
             'items.*.qty' => ['required', 'integer', 'min:1'],
             'items.*.price' => ['required', 'numeric', 'min:0'],
+            'items.*.image' => ['nullable', 'string'],
             'status' => ['sometimes', 'string'],
             'payment_method' => ['sometimes', 'in:cash,bakong'],
             'currency' => ['sometimes', 'string', 'size:3'],

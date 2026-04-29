@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\HandleCors;
+use App\Http\Middleware\EnsureUserRole;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,7 +16,19 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
          $middleware->prepend(HandleCors::class);
+         $middleware->alias([
+             'role' => EnsureUserRole::class,
+         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (Throwable $e, $request) {
+            // Handle Unauthenticated exception for API routes
+            if ($e instanceof \Illuminate\Auth\AuthenticationException && $request->is('api/*')) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+            // Handle Authorization exception for API routes
+            if ($e instanceof \Illuminate\Auth\Access\AuthorizationException && $request->is('api/*')) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+        });
     })->create();
