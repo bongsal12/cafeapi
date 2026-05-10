@@ -15,10 +15,15 @@ class Product extends Model
         'slug',
         'image',
         'is_active',
+        'current_stock',
+        'unit',
+        'low_stock_alert',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'current_stock' => 'float',
+        'low_stock_alert' => 'float',
     ];
 
     public function category(): BelongsTo
@@ -34,5 +39,10 @@ class Product extends Model
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class);
+    }
+
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class);
     }
 }

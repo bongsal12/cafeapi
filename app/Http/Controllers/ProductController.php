@@ -51,6 +51,14 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        // Frontend sends variants as JSON string in multipart/form-data.
+        if (is_string($request->input('variants'))) {
+            $decoded = json_decode($request->input('variants'), true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                $request->merge(['variants' => $decoded]);
+            }
+        }
+
         $data = $request->validate([
             'category_id'     => ['required','exists:categories,id'],
             'product_type_id' => ['required','exists:product_types,id'],
@@ -78,6 +86,7 @@ class ProductController extends Controller
     $data['slug'] = $data['slug'] ?? Str::slug($data['name'], '_');
     $data['is_active'] = $data['is_active'] ?? true;
 
+
     $product = DB::transaction(function () use ($data, $variants) {
         $product = Product::create($data);
         $product->variants()->createMany($variants);
@@ -96,6 +105,14 @@ class ProductController extends Controller
 
   public function update(Request $request, Product $product)
 {
+    // Frontend sends variants as JSON string in multipart/form-data.
+    if (is_string($request->input('variants'))) {
+        $decoded = json_decode($request->input('variants'), true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            $request->merge(['variants' => $decoded]);
+        }
+    }
+
     $data = $request->validate([
         'category_id'     => ['sometimes', 'required', 'exists:categories,id'],
         'product_type_id' => ['sometimes', 'required', 'exists:product_types,id'],
@@ -147,7 +164,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
-        $product->delete();
+        Product::query()->whereKey($product->id)->delete();
         return response()->json(['message' => 'Deleted']);
     }
 }

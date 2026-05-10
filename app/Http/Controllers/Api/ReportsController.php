@@ -80,17 +80,17 @@ class ReportsController extends Controller
             }
         }
 
-        // paid orders only
-        $paidOrders = Order::query()
-            ->whereBetween('created_at', [$start, $end])
-            ->where('payment_status', 'paid');
+        // all orders in the selected range
+        $ordersQuery = Order::query()
+            ->where('created_at', '>=', $start)
+            ->where('created_at', '<=', $end);
 
-        $revenue = (float) $paidOrders->clone()->sum('total');
-        $ordersCount = (int) $paidOrders->clone()->count();
+        $revenue = (float) $ordersQuery->clone()->sum('total');
+        $ordersCount = (int) $ordersQuery->clone()->count();
         $avgOrder = $ordersCount ? ($revenue / $ordersCount) : 0.0;
 
         // DAILY (fill missing)
-        $dailyRows = $paidOrders->clone()
+        $dailyRows = $ordersQuery->clone()
             ->selectRaw("DATE(created_at) as day")
             ->selectRaw("SUM(total) as total")
             ->selectRaw("COUNT(*) as orders")
@@ -112,23 +112,24 @@ class ReportsController extends Controller
             ];
         }
 
-        // TOP ITEMS (orders.items JSON -> cast to jsonb)
+                // TOP ITEMS BY REVENUE (orders.items JSON -> cast to jsonb)
         $topItems = DB::select("
             SELECT
               (it.item->>'name') AS name,
-              SUM( (it.item->>'qty')::int ) AS qty
+                            SUM( (it.item->>'qty')::int ) AS qty,
+                            SUM( ((it.item->>'qty')::numeric) * ((it.item->>'price')::numeric) ) AS amount
             FROM orders o
             CROSS JOIN LATERAL jsonb_array_elements(COALESCE(o.items, '[]'::json)::jsonb) AS it(item)
-            WHERE o.payment_status = 'paid'
-              AND o.created_at BETWEEN ? AND ?
+                        WHERE o.created_at BETWEEN ? AND ?
             GROUP BY (it.item->>'name')
-            ORDER BY qty DESC
+                        ORDER BY amount DESC
             LIMIT 5
-        ", [$start, $end]);
+                ", [$start, $end]);
 
         $topItems = collect($topItems)->map(fn ($r) => [
             'name' => (string) $r->name,
             'qty' => (int) $r->qty,
+                        'amount' => (float) $r->amount,
         ])->values();
 
         // SALES BY TYPE
@@ -144,8 +145,7 @@ class ReportsController extends Controller
               ON p.id = NULLIF(it.item->>'product_id','')::int
             LEFT JOIN product_types pt
               ON pt.id = p.product_type_id
-            WHERE o.payment_status = 'paid'
-              AND o.created_at BETWEEN ? AND ?
+                        WHERE o.created_at BETWEEN ? AND ?
             GROUP BY COALESCE(pt.name, 'Other')
             ORDER BY total DESC
         ", [$start, $end]);
@@ -154,6 +154,24 @@ class ReportsController extends Controller
             'type' => (string) $r->type,
             'total' => (float) $r->total,
         ])->values();
+
+        $orders = $ordersQuery->clone()
+            ->with([])
+            ->latest()
+            ->limit(100)
+            ->get([
+                'id',
+                'reference',
+                'table_no',
+                'status',
+                'total',
+                'items',
+                'created_at',
+                'payment_method',
+                'payment_provider',
+                'payment_status',
+                'paid_at',
+            ]);
 
         return response()->json([
             'range' => [
@@ -173,6 +191,7 @@ class ReportsController extends Controller
             'daily' => $daily,
             'topItems' => $topItems,
             'byType' => $byType,
+            'orders' => $orders,
         ]);
     }
 }

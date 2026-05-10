@@ -23,10 +23,20 @@ use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\OrderPaymentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\DiningTableController;
 
-Route::apiResource('categories', CategoryController::class);
-Route::apiResource('product-types', ProductTypeController::class);
-Route::apiResource('products', ProductController::class);
+// Product and category management: staff + admin
+// Public: allow listing products for the customer menu (no auth required)
+Route::get('products', [ProductController::class, 'index']);
+Route::get('products/{product}', [ProductController::class, 'show']);
+
+// Product and category management: staff + admin
+Route::middleware('auth:sanctum', 'role:staff,admin')->group(function () {
+    Route::apiResource('categories', CategoryController::class);
+    Route::apiResource('product-types', ProductTypeController::class);
+    Route::apiResource('products', ProductController::class)->except(['index', 'show']);
+});
 
 Route::get('menu', [MenuController::class, 'index']);
 
@@ -46,15 +56,28 @@ Route::middleware('auth:sanctum', 'role:admin')->group(function () {
     Route::get('/users', [UserController::class, 'index']);
     Route::patch('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);
+    Route::apiResource('tables', DiningTableController::class);
+
+    Route::prefix('inventory')->group(function () {
+        Route::get('/items', [InventoryController::class, 'index']);
+        Route::post('/items', [InventoryController::class, 'store']);
+        Route::patch('/items/{item}', [InventoryController::class, 'updateSettings']);
+        Route::delete('/items/{item}', [InventoryController::class, 'destroy']);
+        Route::get('/items/{item}/movements', [InventoryController::class, 'movements']);
+        Route::post('/movements', [InventoryController::class, 'moveStock']);
+    });
 });
 
-// Staff and Admin routes
-Route::prefix('orders')->middleware('auth:sanctum')->group(function () {
-    Route::get('/', [OrderController::class, 'index']);
-    Route::post('/', [OrderController::class, 'store']);
-    Route::patch('/{order}/status', [OrderController::class, 'updateStatus']);
-});
+// Staff and Admin routes (orders + payments)
+Route::middleware('auth:sanctum', 'role:staff,admin')->group(function () {
+    Route::prefix('orders')->group(function () {
+        Route::get('/', [OrderController::class, 'index']);
+        Route::post('/', [OrderController::class, 'store']);
+        Route::patch('/{order}/status', [OrderController::class, 'updateStatus']);
+        Route::patch('/{order}/mark-paid', [OrderController::class, 'markAsPaid']);
+    });
 
-Route::post('/orders/{order}/bakong/intent', [BakongPaymentController::class, 'intent']);
-Route::post('/orders/{order}/bakong/khqr', [OrderPaymentController::class, 'khqr']);
-Route::get('/orders/{order}/bakong/status', [BakongPaymentController::class, 'status']);
+    Route::post('/orders/{order}/bakong/intent', [BakongPaymentController::class, 'intent']);
+    Route::post('/orders/{order}/bakong/khqr', [OrderPaymentController::class, 'khqr']);
+    Route::get('/orders/{order}/bakong/status', [BakongPaymentController::class, 'status']);
+});

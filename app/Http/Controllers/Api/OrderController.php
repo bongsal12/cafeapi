@@ -14,12 +14,18 @@ class OrderController extends Controller
 {
     public function index()
     {
-        return Order::latest()->get();
+        // Return recent orders (last 200) to avoid huge payloads
+        // Frontend can paginate or filter as needed
+        return Order::query()
+            ->latest()
+            ->limit(200)
+            ->get();
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
+            'table_no' => ['nullable', 'string', 'max:100'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'integer'],
             'items.*.name' => ['required', 'string'],
@@ -39,20 +45,12 @@ class OrderController extends Controller
         $isCash = $paymentMethod === 'cash';
         $isBakong = $paymentMethod === 'bakong';
 
-        $paymentStatus = 'unpaid';
-        if ($isCash) {
-            $paymentStatus = 'paid';
-        } elseif ($isBakong) {
-            $paymentStatus = 'pending';
-        }
-
-        $orderStatus = $data['status'] ?? 'pending';
-        if ($isCash) {
-            $orderStatus = 'paid';
-        }
+        $paymentStatus = $isCash ? 'paid' : 'pending';
+        $orderStatus = $isCash ? 'paid' : 'pending';
 
         $order = Order::create([
             'reference' => 'ORD-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4)),
+            'table_no' => $data['table_no'] ?? null,
             'status' => $orderStatus,
             'total' => $total,
             'items' => $data['items'],
@@ -85,6 +83,21 @@ class OrderController extends Controller
         $order->refresh();
 
         // ✅ broadcast to realtime dashboard
+        broadcast(new OrderUpdated($order))->toOthers();
+
+        return response()->json($order, 200);
+    }
+
+    public function markAsPaid(Request $request, Order $order)
+    {
+        // Mark cash orders as paid by staff
+        $order->update([
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $order->refresh();
+
         broadcast(new OrderUpdated($order))->toOthers();
 
         return response()->json($order, 200);
