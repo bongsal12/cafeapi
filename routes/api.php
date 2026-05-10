@@ -36,6 +36,8 @@ Route::middleware('auth:sanctum', 'role:staff,admin')->group(function () {
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('product-types', ProductTypeController::class);
     Route::apiResource('products', ProductController::class)->except(['index', 'show']);
+    // Promotions management (percent, single-product scope)
+    Route::apiResource('promotions', App\Http\Controllers\Api\PromotionController::class);
 });
 
 Route::get('menu', [MenuController::class, 'index']);
