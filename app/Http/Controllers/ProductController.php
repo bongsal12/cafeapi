@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Services\InventoryService;
 
 class ProductController extends Controller
 {
@@ -19,7 +20,7 @@ class ProductController extends Controller
     //         ->latest()
     //         ->paginate(20);
     // }
-    public function index(Request $request)
+    public function index(Request $request, InventoryService $inventory)
 {
     $q = Product::query()
         ->with(['variants', 'category', 'productType']);
@@ -51,6 +52,7 @@ class ProductController extends Controller
     $paginated = $q->orderByDesc('id')->paginate(20);
 
     $this->attachActivePromotions($paginated->getCollection());
+    $this->attachInventoryAvailability($paginated->getCollection(), $inventory);
 
     return $paginated;
 }
@@ -104,10 +106,11 @@ class ProductController extends Controller
         return response()->json($product->load(['category','productType','variants']), 201);
     }
 
-    public function show(Product $product)
+    public function show(Product $product, InventoryService $inventory)
     {
         $loaded = $product->load(['category','productType','variants']);
         $this->attachActivePromotions(collect([$loaded]));
+        $this->attachInventoryAvailability(collect([$loaded]), $inventory);
         return $loaded;
     }
 
@@ -246,6 +249,22 @@ class ProductController extends Controller
             }
 
             $product->setAttribute('has_discount', $hasDiscount);
+        }
+    }
+
+    private function attachInventoryAvailability(Collection $products, InventoryService $inventory): void
+    {
+        foreach ($products as $product) {
+            $primaryVariant = $product->variants->first();
+            $size = $primaryVariant->size ?? 'regular';
+            $availability = $inventory->availabilityForProduct((int) $product->id, $size);
+
+            $product->setAttribute('inventory_availability', [
+                'available' => (int) ($availability['available'] ?? 0),
+                'reasons' => $availability['reasons'] ?? [],
+                'size' => $size,
+            ]);
+            $product->setAttribute('is_sold_out', (int) ($availability['available'] ?? 0) <= 0);
         }
     }
 }

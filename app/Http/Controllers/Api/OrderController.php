@@ -5,6 +5,7 @@ use App\Events\OrderCreated;
 use App\Events\OrderUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\InventoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,7 +23,7 @@ class OrderController extends Controller
             ->get();
     }
 
-    public function store(Request $request)
+    public function store(Request $request, InventoryService $inventory)
     {
         $data = $request->validate([
             'table_no' => ['nullable', 'string', 'max:100'],
@@ -48,25 +49,29 @@ class OrderController extends Controller
         $paymentStatus = $isCash ? 'paid' : 'pending';
         $orderStatus = $isCash ? 'paid' : 'pending';
 
-        $order = Order::create([
-            'reference' => 'ORD-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4)),
-            'table_no' => $data['table_no'] ?? null,
-            'status' => $orderStatus,
-            'total' => $total,
-            'items' => $data['items'],
-            'payment_method' => $paymentMethod,
-            'payment_status' => $paymentStatus,
-            'payment_provider' => $isCash ? 'cash' : ($isBakong ? 'bakong' : null),
-            'currency' => strtoupper($data['currency'] ?? 'USD'),
-            'paid_at' => $isCash ? now() : null,
-        ]);
+        $order = DB::transaction(function () use ($data, $total, $paymentMethod, $isCash, $isBakong, $inventory, $request) {
+            $order = Order::create([
+                'reference' => 'ORD-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4)),
+                'table_no' => $data['table_no'] ?? null,
+                'status' => $isCash ? 'paid' : 'pending',
+                'total' => $total,
+                'items' => $data['items'],
+                'payment_method' => $paymentMethod,
+                'payment_status' => $isCash ? 'paid' : 'pending',
+                'payment_provider' => $isCash ? 'cash' : ($isBakong ? 'bakong' : null),
+                'currency' => strtoupper($data['currency'] ?? 'USD'),
+                'paid_at' => $isCash ? now() : null,
+            ]);
+
+            if ($isCash) {
+                $inventory->deductOrderInventory($order, $request->user());
+            }
+
+            return $order;
+        });
 
         broadcast(new OrderCreated($order));
-         Log::info('ORDER CREATED', ['id' => $order->id]);
-    Log::info('BROADCAST DEFAULT', ['default' => config('broadcasting.default')]);
-
-    event(new OrderCreated($order)); // ✅ do this (recommended)
-    Log::info('ORDER EVENT FIRED', ['id' => $order->id]);
+        Log::info('ORDER CREATED', ['id' => $order->id]);
 
         return response()->json($order, 201);
     }
@@ -88,13 +93,15 @@ class OrderController extends Controller
         return response()->json($order, 200);
     }
 
-    public function markAsPaid(Request $request, Order $order)
+    public function markAsPaid(Request $request, Order $order, InventoryService $inventory)
     {
         // Mark cash orders as paid by staff
         $order->update([
             'payment_status' => 'paid',
             'paid_at' => now(),
         ]);
+
+        $inventory->deductOrderInventory($order, $request->user());
 
         $order->refresh();
 

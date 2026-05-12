@@ -20,6 +20,8 @@ class InventoryMovement extends Model
         'after_stock',
         'note',
         'created_by',
+        'reference_type',
+        'reference_id',
     ];
 
     protected $casts = [

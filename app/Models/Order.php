@@ -12,6 +12,7 @@ class Order extends Model
         'khqr_string','khqr_md5','bakong_full_hash',
         'payment_expires_at','paid_at',
         'payment_provider','payment_ref',
+        'inventory_deducted','inventory_deducted_at',
     ];
 
     protected $casts = [
@@ -19,6 +20,8 @@ class Order extends Model
         'total' => 'decimal:2',
         'payment_expires_at' => 'datetime',
         'paid_at' => 'datetime',
+        'inventory_deducted' => 'boolean',
+        'inventory_deducted_at' => 'datetime',
     ];
 
     public function payments()

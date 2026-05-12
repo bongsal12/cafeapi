@@ -24,6 +24,7 @@ use App\Http\Controllers\OrderPaymentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\InventoryController;
+use App\Http\Controllers\Api\InventoryModuleController;
 use App\Http\Controllers\DiningTableController;
 
 // Product and category management: staff + admin
@@ -54,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
 // Admin-only routes
 Route::middleware('auth:sanctum', 'role:admin')->group(function () {
     Route::get('/reports', [ReportsController::class, 'index']);
+    Route::get('/reports/profit', [ReportsController::class, 'profit']);
     Route::post('/users', [UserController::class, 'store']);
     Route::get('/users', [UserController::class, 'index']);
     Route::patch('/users/{user}', [UserController::class, 'update']);
@@ -61,12 +63,28 @@ Route::middleware('auth:sanctum', 'role:admin')->group(function () {
     Route::apiResource('tables', DiningTableController::class);
 
     Route::prefix('inventory')->group(function () {
+        Route::get('/dashboard', [InventoryModuleController::class, 'dashboard']);
         Route::get('/items', [InventoryController::class, 'index']);
         Route::post('/items', [InventoryController::class, 'store']);
         Route::patch('/items/{item}', [InventoryController::class, 'updateSettings']);
         Route::delete('/items/{item}', [InventoryController::class, 'destroy']);
         Route::get('/items/{item}/movements', [InventoryController::class, 'movements']);
         Route::post('/movements', [InventoryController::class, 'moveStock']);
+
+        Route::post('/stock-in', [InventoryModuleController::class, 'stockIn']);
+        Route::get('/stock-in-records', [InventoryModuleController::class, 'stockInRecords']);
+        Route::post('/waste', [InventoryModuleController::class, 'waste']);
+        Route::get('/waste-records', [InventoryModuleController::class, 'wasteRecords']);
+        Route::get('/movement-records', [InventoryModuleController::class, 'movementRecords']);
+        Route::get('/availability', [InventoryModuleController::class, 'availability']);
+
+        Route::get('/recipes', [InventoryModuleController::class, 'recipes']);
+        Route::post('/recipes', [InventoryModuleController::class, 'storeRecipe']);
+        Route::get('/recipes/{recipe}', [InventoryModuleController::class, 'showRecipe']);
+        Route::patch('/recipes/{recipe}', [InventoryModuleController::class, 'updateRecipe']);
+        Route::delete('/recipes/{recipe}', [InventoryModuleController::class, 'destroyRecipe']);
+
+        Route::post('/stock-counts', [InventoryModuleController::class, 'stockCounts']);
     });
 });
 

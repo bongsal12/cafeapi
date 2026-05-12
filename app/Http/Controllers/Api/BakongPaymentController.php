@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderPayment;
 use App\Services\BakongService;
+use App\Services\InventoryService;
 
 class BakongPaymentController extends Controller
 {
-    public function status(Order $order, BakongService $bakong)
+    public function status(Order $order, BakongService $bakong, InventoryService $inventory)
     {
         $order->refresh();
 
@@ -52,7 +53,7 @@ class BakongPaymentController extends Controller
             ]);
 
             // update latest payment record
-            $payment = OrderPayment::where('order_id', $order->id)->latest()->first();
+            $payment = OrderPayment::query()->where('order_id', $order->id)->latest()->first();
             if ($payment) {
                 $payment->update([
                     'status' => 'paid',
@@ -60,6 +61,8 @@ class BakongPaymentController extends Controller
                     'raw' => $bakongResp,
                 ]);
             }
+
+            $inventory->deductOrderInventory($order, request()->user());
 
             return response()->json([
                 'paid' => true,

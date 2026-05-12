@@ -17,11 +17,14 @@ class InventoryController extends Controller
             ->select([
                 'id',
                 'name',
+                'category',
                 'slug',
                 'image',
                 'current_stock',
                 'unit',
                 'low_stock_alert',
+                'cost_per_unit',
+                'sweetness_levels',
                 'is_active',
                 'updated_at',
             ]);
@@ -47,11 +50,23 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:120'],
+            'category' => ['sometimes', 'required', 'string', 'max:80'],
             'slug' => ['sometimes', 'nullable', 'string', 'max:120', 'unique:inventory_items,slug,'.$item->id],
             'unit' => ['sometimes', 'required', 'string', 'max:30'],
             'low_stock_alert' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'cost_per_unit' => ['sometimes', 'required', 'numeric', 'min:0'],
+            'sweetness_levels' => ['sometimes', 'nullable', 'array'],
+            'sweetness_levels.*' => ['nullable', 'string', 'max:120'],
+            'is_active' => ['sometimes', 'boolean'],
             'image' => ['sometimes','nullable','file','image','mimes:jpeg,png,jpg,gif,svg,webp','max:2048'],
         ]);
+
+        if (array_key_exists('sweetness_levels', $data)) {
+            $data['sweetness_levels'] = array_values(array_filter(array_map(
+                fn ($level) => trim((string) $level),
+                $data['sweetness_levels'] ?? []
+            )));
+        }
 
         if ($request->hasFile('image')) {
             if ($item->image) {
@@ -69,12 +84,24 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['required','string','max:120'],
+            'category' => ['sometimes','required','string','max:80'],
             'slug' => ['nullable','string','max:120','unique:inventory_items,slug'],
             'image' => ['sometimes','nullable','file','image','mimes:jpeg,png,jpg,gif,svg,webp','max:2048'],
             'current_stock' => ['sometimes','numeric','min:0'],
             'unit' => ['sometimes','string','max:30'],
             'low_stock_alert' => ['sometimes','numeric','min:0'],
+            'cost_per_unit' => ['sometimes','numeric','min:0'],
+            'sweetness_levels' => ['sometimes', 'nullable', 'array'],
+            'sweetness_levels.*' => ['nullable', 'string', 'max:120'],
+            'is_active' => ['sometimes','boolean'],
         ]);
+
+        if (array_key_exists('sweetness_levels', $data)) {
+            $data['sweetness_levels'] = array_values(array_filter(array_map(
+                fn ($level) => trim((string) $level),
+                $data['sweetness_levels'] ?? []
+            )));
+        }
 
         if ($request->hasFile('image')) {
             $data['image'] = $request->file('image')->store('inventory', 'public');
@@ -82,12 +109,14 @@ class InventoryController extends Controller
 
         $item = InventoryItem::query()->create([
             'name' => $data['name'],
+            'category' => $data['category'] ?? 'Other',
             'slug' => $data['slug'] ?? null,
             'image' => $data['image'] ?? null,
             'current_stock' => $data['current_stock'] ?? 0,
             'unit' => $data['unit'] ?? 'unit',
             'low_stock_alert' => $data['low_stock_alert'] ?? 0,
-            'is_active' => true,
+            'cost_per_unit' => $data['cost_per_unit'] ?? 0,
+            'is_active' => $data['is_active'] ?? true,
         ]);
 
         // if initial stock provided, record a movement
@@ -124,7 +153,7 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'inventory_item_id' => ['required', 'exists:inventory_items,id'],
-            'type' => ['required', 'in:in,out,adjustment'],
+            'type' => ['required', 'in:in,out,adjustment,purchase,waste,sale_usage,stock_count'],
             'quantity' => ['required', 'numeric', 'min:0.001'],
             'note' => ['nullable', 'string', 'max:255'],
         ]);
@@ -217,11 +246,17 @@ class InventoryController extends Controller
         return [
             'id' => $p->id,
             'name' => $p->name,
+            'category' => $p->category,
             'slug' => $p->slug,
             'image' => $p->image,
             'current_stock' => (float) $p->current_stock,
             'unit' => (string) $p->unit,
             'low_stock_alert' => (float) $p->low_stock_alert,
+            'cost_per_unit' => (float) ($p->cost_per_unit ?? 0),
+            'sweetness_levels' => array_values(array_filter(array_map(
+                fn ($level) => trim((string) $level),
+                (array) ($p->sweetness_levels ?? [])
+            ))),
             'is_low_stock' => (float) $p->current_stock <= (float) $p->low_stock_alert,
             'is_active' => (bool) $p->is_active,
             'updated_at' => optional($p->updated_at)->toISOString(),
