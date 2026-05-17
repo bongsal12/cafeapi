@@ -33,7 +33,7 @@ Route::get('products', [ProductController::class, 'index']);
 Route::get('products/{product}', [ProductController::class, 'show']);
 
 // Product and category management: staff + admin
-Route::middleware('auth:sanctum', 'role:staff,admin')->group(function () {
+Route::middleware('auth:sanctum', 'permission:products')->group(function () {
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('product-types', ProductTypeController::class);
     Route::apiResource('products', ProductController::class)->except(['index', 'show']);
@@ -53,14 +53,23 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Admin-only routes
-Route::middleware('auth:sanctum', 'role:admin')->group(function () {
+Route::middleware('auth:sanctum', 'permission:reports')->group(function () {
     Route::get('/reports', [ReportsController::class, 'index']);
     Route::get('/reports/profit', [ReportsController::class, 'profit']);
+});
+
+Route::middleware('auth:sanctum', 'permission:users')->group(function () {
     Route::post('/users', [UserController::class, 'store']);
     Route::get('/users', [UserController::class, 'index']);
     Route::patch('/users/{user}', [UserController::class, 'update']);
     Route::delete('/users/{user}', [UserController::class, 'destroy']);
+});
+
+Route::middleware('auth:sanctum', 'permission:tables')->group(function () {
     Route::apiResource('tables', DiningTableController::class);
+});
+
+Route::middleware('auth:sanctum', 'permission:inventory')->group(function () {
 
     Route::prefix('inventory')->group(function () {
         Route::get('/dashboard', [InventoryModuleController::class, 'dashboard']);
@@ -88,8 +97,15 @@ Route::middleware('auth:sanctum', 'role:admin')->group(function () {
     });
 });
 
+Route::middleware('auth:sanctum', 'permission:settings')->group(function () {
+    Route::get('/role-permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'index']);
+    Route::post('/role-permissions', [App\Http\Controllers\Api\RolePermissionController::class, 'store']);
+    Route::patch('/role-permissions/{role}', [App\Http\Controllers\Api\RolePermissionController::class, 'update']);
+    Route::delete('/role-permissions/{role}', [App\Http\Controllers\Api\RolePermissionController::class, 'destroy']);
+});
+
 // Staff and Admin routes (orders + payments)
-Route::middleware('auth:sanctum', 'role:staff,admin')->group(function () {
+Route::middleware('auth:sanctum', 'permission:orders|pos')->group(function () {
     Route::prefix('orders')->group(function () {
         Route::get('/', [OrderController::class, 'index']);
         Route::post('/', [OrderController::class, 'store']);

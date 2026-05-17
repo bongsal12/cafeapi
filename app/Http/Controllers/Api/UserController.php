@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\RolePermission;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -18,14 +19,22 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'role' => ['sometimes', 'in:admin,staff'],
+            'role' => ['sometimes', 'string', 'max:50'],
         ]);
+
+        $role = $data['role'] ?? 'staff';
+
+        if (!RolePermission::query()->where('role', $role)->exists() && !in_array($role, array_keys(config('role_permissions.defaults', [])), true)) {
+            return response()->json([
+                'message' => 'Selected role does not exist.',
+            ], 422);
+        }
 
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
-            'role' => $data['role'] ?? 'staff',
+            'role' => $role,
         ]);
 
         return response()->json(['user' => $user], 201);
@@ -48,10 +57,21 @@ class UserController extends Controller
             'name' => ['sometimes','string','max:255'],
             'email' => ['sometimes','email','max:255','unique:users,email,'.$user->id],
             'password' => ['sometimes','nullable','string','min:8'],
-            'role' => ['sometimes','in:admin,staff'],
+            'role' => ['sometimes','string','max:50'],
             'active' => ['sometimes','boolean'],
             'avatar' => ['sometimes','nullable','string'],
         ]);
+
+        if (array_key_exists('role', $data)) {
+            $allowed = RolePermission::query()->where('role', $data['role'])->exists()
+                || in_array($data['role'], array_keys(config('role_permissions.defaults', [])), true);
+
+            if (!$allowed) {
+                return response()->json([
+                    'message' => 'Selected role does not exist.',
+                ], 422);
+            }
+        }
 
         if (isset($data['password']) && $data['password']) {
             $data['password'] = Hash::make($data['password']);
